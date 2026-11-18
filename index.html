@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ROMAJI HACKER TYPING [CHEAT EDITION]</title>
+<style>
+  body { background: #090d16; color: #00ff41; font-family: sans-serif; text-align: center; margin: 0; padding: 15px; }
+  .panel { background: #111827; border: 2px solid #00ff41; border-radius: 12px; padding: 15px; max-width: 420px; margin: 0 auto; box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); }
+  .cheat-active { border-color: #facc15 !important; box-shadow: 0 0 25px rgba(250, 204, 21, 0.6) !important; }
+  .stats { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #1f2937; padding-bottom: 8px; font-family: monospace; }
+  .timer { color: #38bdf8; font-weight: bold; }
+  .word-box { background: #000; padding: 20px 10px; border-radius: 8px; margin: 12px 0; border: 1px solid #374151; }
+  .kanji-text { font-size: 26px; font-weight: bold; color: #ffffff; margin-bottom: 4px; }
+  .kana-text { font-size: 14px; color: #9ca3af; margin-bottom: 10px; }
+  .romaji-word { font-size: 24px; font-weight: bold; letter-spacing: 2px; font-family: monospace; }
+  .typed { color: #00ff41; }
+  .untyped { color: #6b7280; }
+  input { width: 90%; font-size: 20px; padding: 10px; background: #1f2937; color: #00ff41; border: 2px solid #00ff41; border-radius: 8px; text-align: center; outline: none; font-family: monospace; }
+  button { background: #00ff41; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 8px; margin-top: 15px; cursor: pointer; }
+  .combo { color: #facc15; font-size: 14px; height: 20px; margin-top: 8px; font-weight: bold; }
+  #cheatBadge { display: none; background: #facc15; color: #000; font-size: 12px; font-weight: bold; padding: 3px 8px; border-radius: 4px; margin-bottom: 8px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+  <div class="panel" id="mainPanel">
+    <div id="cheatBadge">⚠️ DEVELOPER CHEAT MODE ACTIVE</div>
+    <h3 id="gameTitle" style="font-family:monospace; margin-top:0; cursor:pointer; user-select:none;">[ ROMAJI TYPING BATTLE ]</h3>
+    <div class="stats">
+      <div>SCORE: <span id="score">0</span></div>
+      <div class="timer">TIME: <span id="time">60</span>s</div>
+    </div>
+
+    <div class="word-box">
+      <div class="kanji-text" id="kanjiDisplay">準備完了？</div>
+      <div class="kana-text" id="kanaDisplay">ボタンを押してスタート！</div>
+      <div class="romaji-word" id="romajiDisplay">READY</div>
+      <div class="combo" id="comboText"></div>
+    </div>
+
+    <input type="text" id="typeInput" placeholder="ローマ字で入力..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled>
+    <br>
+    <button id="startBtn" onclick="startGame()">START</button>
+  </div>
+
+<script>
+  const wordList = [
+    { kanji: "暗号解読", kana: "あんごうかいどく", roma: ["angoukaidoku", "anngoukaidoku"] },
+    { kanji: "人工知能", kana: "じんこうちのう", roma: ["jinkoutinou", "zinkoutinou", "jinkouchinou", "zinkouchinou"] },
+    { kanji: "論理的思考", kana: "ろんりてきしこう", roma: ["ronritekisikou", "ronritekishikou"] },
+    { kanji: "絶対防御", kana: "ぜったいぼうぎょ", roma: ["zettaibougyo"] },
+    { kanji: "極寒サバイバル", kana: "ごっかんさばいばる", roma: ["gokkansabaibaru"] },
+    { kanji: "不正アクセス", kana: "ふせいあくせす", roma: ["huseiakusesu", "fuseiakusesu"] },
+    { kanji: "秘密のパスワード", kana: "ひみつのぱすわーど", roma: ["himitunopasuwa-do", "himitsunopasuwa-do"] },
+    { kanji: "宇宙開発", kana: "うちゅうかいはつ", roma: ["utyuukaihatu", "uchuukaihatsu", "utyuukaihatsu", "uchuukaihatu"] },
+    { kanji: "完全勝利", kana: "かんぜんしょうり", roma: ["kanzensyouri", "kanzenshouri"] },
+    { kanji: "電光石火", kana: "でんこうせっか", roma: ["denkousekka"] },
+    { kanji: "最高難易度", kana: "さいこうなんいど", roma: ["saikounannido"] },
+    { kanji: "未来予測", kana: "みらいよそく", roma: ["miraiyosoku"] },
+    { kanji: "一撃必殺", kana: "いちげきひっさつ", roma: ["itigekihissatu", "ichigekihissatsu", "itigekihissatsu", "ichigekihissatu"] },
+    { kanji: "プログラム実行", kana: "ぷろぐらむじっこう", roma: ["puroguramujikkou", "puroguramuzikkou"] },
+    { kanji: "伝説のハッカー", kana: "でんせつのはっかー", roma: ["densetunohakka-", "densetsunohakka-"] }
+  ];
+
+  let current = {};
+  let activeRoma = "";
+  let score = 0;
+  let timeLeft = 60;
+  let combo = 0;
+  let timerId = null;
+
+  // チート状態管理フラグ
+  let cheatGodMode = false;   // 時間停止
+  let cheatAutoHack = false;  // どのキーでも正解になる
+  let titleTapCount = 0;
+
+  const inputEl = document.getElementById("typeInput");
+  const kanjiDisplay = document.getElementById("kanjiDisplay");
+  const kanaDisplay = document.getElementById("kanaDisplay");
+  const romajiDisplay = document.getElementById("romajiDisplay");
+  const scoreEl = document.getElementById("score");
+  const timeEl = document.getElementById("time");
+  const comboEl = document.getElementById("comboText");
+  const startBtn = document.getElementById("startBtn");
+  const mainPanel = document.getElementById("mainPanel");
+  const cheatBadge = document.getElementById("cheatBadge");
+
+  // 隠しコマンド：タイトルを5回タップで全チート発動
+  document.getElementById("gameTitle").addEventListener("click", () => {
+    titleTapCount++;
+    if (titleTapCount >= 5) {
+      activateCheat("ALL");
+      titleTapCount = 0;
+    }
+  });
+
+  function activateCheat(type) {
+    mainPanel.classList.add("cheat-active");
+    cheatBadge.style.display = "inline-block";
+
+    if (type === "GOD" || type === "ALL") {
+      cheatGodMode = true;
+      timeEl.innerText = "∞";
+      comboEl.innerText = "⚡ CHEAT: 時間無限モード発動！";
+    }
+    if (type === "AUTO" || type === "ALL") {
+      cheatAutoHack = true;
+      comboEl.innerText = "⚡ CHEAT: 連打オートハック発動！";
+    }
+    if (type === "SCORE" || type === "ALL") {
+      score += 9999;
+      scoreEl.innerText = score;
+      comboEl.innerText = "⚡ CHEAT: スコア +9999！";
+    }
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = 60;
+    combo = 0;
+    cheatGodMode = false;
+    cheatAutoHack = false;
+    mainPanel.classList.remove("cheat-active");
+    cheatBadge.style.display = "none";
+
+    scoreEl.innerText = score;
+    timeEl.innerText = timeLeft;
+    comboEl.innerText = "";
+    startBtn.style.display = "none";
+    inputEl.disabled = false;
+    inputEl.value = "";
+    inputEl.focus();
+
+    nextWord();
+
+    clearInterval(timerId);
+    timerId = setInterval(() => {
+      if (cheatGodMode) return; // ゴッドモード中は時間を減らさない
+      timeLeft--;
+      timeEl.innerText = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  function nextWord() {
+    current = wordList[Math.floor(Math.random() * wordList.length)];
+    activeRoma = current.roma;
+    kanjiDisplay.innerText = current.kanji;
+    kanaDisplay.innerText = current.kana;
+    inputEl.value = "";
+    renderRomaji("");
+  }
+
+  function renderRomaji(typedStr) {
+    let html = "";
+    for (let i = 0; i < activeRoma.length; i++) {
+      if (i < typedStr.length) {
+        html += `<span class="typed">${activeRoma[i]}</span>`;
+      } else {
+        html += `<span class="untyped">${activeRoma[i]}</span>`;
+      }
+    }
+    romajiDisplay.innerHTML = html;
+  }
+
+  inputEl.addEventListener("input", () => {
+    let val = inputEl.value.toLowerCase();
+
+    // 1. 隠しチートコードのチェック（今の入力が合言葉と一致したら発動）
+    if (val === "godmode") {
+      inputEl.value = "";
+      activateCheat("GOD");
+      return;
+    }
+    if (val === "autohack") {
+      inputEl.value = "";
+      activateCheat("AUTO");
+      return;
+    }
+    if (val === "9999") {
+      inputEl.value = "";
+      activateCheat("SCORE");
+      return;
+    }
+
+    // 2. オートハック（連打チート）がONのときの処理
+    if (cheatAutoHack && val.length > 0) {
+      // 何が打たれても、強制的に正しい次の1文字に書き換える！
+      val = activeRoma.slice(0, val.length);
+      inputEl.value = val;
+    } else {
+      // 通常のローマ字判定（ただしチートコードの入力途中は消さないように保護）
+      const isTypingCheat = "godmode".startsWith(val) || "autohack".startsWith(val) || "9999".startsWith(val);
+      let matchedPattern = current.roma.find(pattern => pattern.startsWith(val));
+
+      if (!matchedPattern && !isTypingCheat) {
+        inputEl.value = val.slice(0, -1);
+        combo = 0;
+        comboEl.innerText = "MISS!";
+        return;
+      }
+
+      if (matchedPattern) {
+        activeRoma = matchedPattern;
+      } else {
+        // チートコード入力中の場合は画面の緑色進行だけ止めて待機
+        return;
+      }
+    }
+
+    renderRomaji(val);
+
+    // 単語を最後まで打ち切ったらクリア
+    if (val === activeRoma) {
+      combo++;
+      let bonus = combo >= 3 ? combo * 3 : 0;
+      score += (activeRoma.length * 10) + bonus;
+      scoreEl.innerText = score;
+      comboEl.innerText = combo >= 2 ? `🔥 ${combo} COMBO! (+${bonus}pt)` : "CLEAR!";
+      nextWord();
+    }
+  });
+
+  function endGame() {
+    clearInterval(timerId);
+    inputEl.disabled = true;
+    kanjiDisplay.innerText = "TIME UP!";
+    kanaDisplay.innerText = "お疲れさまでした！";
+    romajiDisplay.innerHTML = `<span style="color:#38bdf8;">SCORE: ${score}</span>`;
+    comboEl.innerText = score >= 1200 ? "称号: 神速のタイピングマスター" : score >= 700 ? "称号: エリートハッカー" : "称号: チャレンジャー";
+    startBtn.innerText = "もう一度プレイ";
+    startBtn.style.display = "inline-block";
+  }
+</script>
+</body>
+</html>
